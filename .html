@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영어 워드 마스터 서비스 (단원 선택 모드)</title>
+    <style>
+        /* 공통 스타일 */
+        body {
+            justify-content: center; align-items: center; display: flex; height: 100vh; margin: 0;
+            background-color: #f5f5f5; font-family: Arial, sans-serif; overflow: hidden;
+        }
+        ::-webkit-scrollbar { display: none; }
+
+        /* ================= 로그인 화면 스타일 ================= */
+        .login-container {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 40px; width: 550px; height: 520px; background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px); border: 1px solid gray; border-radius: 20px;
+            box-shadow: 0px 0px 30px 2px rgb(105, 105, 105); z-index: 10; padding: 20px; box-sizing: border-box;
+        }
+        .login-container .h { font-size: 50px; font-weight: bold; margin-bottom: 20px; }
+        .login-container input {
+            border-radius: 10px; width: 85%; padding: 10px 20px; height: 45px;
+            background-color: white; border: 1px solid #ccc; margin: 15px 0; font-size: 20px; box-sizing: border-box;
+        }
+        .login-container button {
+            border-radius: 30px; width: 85%; height: 60px; font-size: 25px;
+            margin-top: 30px; background-color: black; color: #fff; border: none; cursor: pointer;
+        }
+        .login-container button:hover { background-color: rgb(53, 53, 53); }
+        
+        /* 캐릭터 눈 애니메이션 */
+        .round {
+            width: 200px; height: 140px; background-color: rgb(0, 0, 0);
+            border-top-left-radius: 100px; border-top-right-radius: 100px;
+            position: absolute; bottom: 0px; overflow: hidden; display: flex; justify-content: center; align-items: center;
+        }
+        .eyes { display: flex; justify-content: center; align-items: center; gap: 20px; width: 100%; margin-top: -20px; }
+        .eye-socket { 
+            width: 45px; height: 45px; background-color: white; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; transition: all 0.2s ease;
+        }
+        .eye { width: 18px; height: 18px; background-color: #000; border-radius: 50%; transform-origin: center; }
+        .eye-socket.blind { height: 4px; border-radius: 0; background-color: #000; }
+        .eye-socket.blind .eye { display: none; }
+
+        /* ================= 테스트 화면 스타일 ================= */
+        .test-container { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; }
+        .test-container .input {
+            width: 120px; height: 40px; transition: 1s; padding: 0 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;
+        }
+        .test-container .input:hover, .test-container .input:focus { background-color: transparent; border-radius: 10px; width: 500px; height: 40px; }
+        .test-container .box { transform: scale(1.2); display: flex; gap: 5px; z-index: 10; margin-top: 50px;}
+        .test-container .box_2 { position: absolute; background-color: transparent; top: 35%; text-align: center; }
+        .test-container button { border-radius: 10px; background-color: #fff; border: 1px solid #ccc; height: 40px; cursor: pointer; padding: 0 15px; }
+        .test-container button:hover { background-color: #eee; }
+        
+        /* 제어 바 (모드 변경 및 단원 이동) */
+        .test-container .choice { position: absolute; top: 18%; display: flex; gap: 10px; transform: scale(1.3); z-index: 20; align-items: center;}
+        .test-container .choice select { height: 40px; border-radius: 10px; border: 1px solid #ccc; padding: 0 10px; font-weight: bold; cursor: pointer;}
+        
+        .test-container .H1 { font-size: 55px; margin: 0; }
+        .test-container .check_box {
+            width: 800px; height: 50px; background-color: black; position: absolute; top: 2%; border-radius: 10px;
+            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;
+        }
+        .test-container .detail {
+            width: 800px; height: 120px; background-color: gray; border-radius: 10px; position: absolute; bottom: 5%;
+            font-size: 35px; color: white; display: flex; align-items: center; justify-content: center; text-align: center;
+        }
+        .test-container .user-info { position: absolute; top: 11%; font-weight: bold; color: #333; font-size: 18px; }
+        
+        /* 엑셀/CSV 업로드 영역 */
+        .upload-box { position: absolute; top: 8%; right: 2%; background: #fff; padding: 10px; border-radius: 8px; border: 1px dashed #777; font-size: 12px; z-index: 30;}
+        .upload-box input { margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginSection" class="login-container">
+        <form id="form" onsubmit="return false;" style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+            <div class="h">SIGN IN</div>
+            <input id="inputName" placeholder="이름을 입력하세요..." autocomplete="off">
+            <input id="inputPassword" type="password" placeholder="비밀번호(학번)...">
+            <button id="loginBtn" type="button" onclick="loginCheck()">LOGIN</button>
+        </form>
+    </div>
+
+    <div id="monsterFace" class="round">
+        <div id="eyes" class="eyes">
+            <div class="eye-socket"><div class="eye"></div></div>
+            <div class="eye-socket"><div class="eye"></div></div>
+        </div>
+    </div>
+
+
+    <div id="testSection" class="test-container">
+        <div class="upload-box">
+            <strong>📁 단어장 CSV 업로드</strong><br>
+            <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload()">
+        </div>
+
+        <div class="check_box" id="check_box">모드 설정 중...</div>
+        <div class="user-info" id="userInfo">로그인 정보 없음</div>
+
+        <div class="choice">
+            <button onclick="moveDay(-1)">◀ 이전 Day</button>
+            <select id="daySelect" onchange="selectDay(this.value)">
+                <option value="1">Day 1</option>
+                <option value="2">Day 2</option>
+            </select>
+            <button onclick="moveDay(1)">다음 Day ▶</button>
+            
+            <button class="Korean" onclick="changeMode('ko')" style="margin-left: 15px;">Korean 모드</button>
+            <button class="English" onclick="changeMode('en')">English 모드</button>
+            <button class="login" onclick="logout()">LOGOUT</button>
+        </div>
+
+        <div class="box_2" id="box_2">
+            <h1 class="H1" id="h1">문제 로딩 중...</h1>
+        </div>
+
+        <div class="box">
+            <input placeholder=" Answer.." class="input" id="input" autocomplete="off">
+            <button onclick="checkWord()" class="button" id="button">Answer</button>
+        </div>
+
+        <div class="detail" id="detail">결과가 여기에 표시됩니다.</div>
+    </div>
+
+<script>
+    /* ================= 유저 및 진도 상태 관리 데이터 ================= */
+    const users = [
+        { name: "곽승찬", password: "10801", userType: "1" },
+        { name: "권용우", password: "10802", userType: "2" },
+        { name: "권혁준", password: "10803", userType: "3" },
+        { name: "김동언", password: "10804", userType: "4" },
+        { name: "김동욱", password: "10805", userType: "5" },
+        { name: "김명찬", password: "10806", userType: "6" },
+        { name: "김민재", password: "10807", userType: "7" },
+        { name: "김성수", password: "10808", userType: "8" },
+        { name: "남현승", password: "10809", userType: "9" },
+        { name: "노짐유", password: "10810", userType: "10" },
+        { name: "박유찬", password: "10811", userType: "11" },
+        { name: "송민재", password: "10813", userType: "12" },
+        { name: "신민호", password: "10814", userType: "13" },
+        { name: "연윤", password: "10815", userType: "14" },
+        { name: "오영준", password: "10816", userType: "15" },
+        { name: "오준혁", password: "10817", userType: "16" },
+        { name: "유태경", password: "10818", userType: "17" },
+        { name: "이기용", password: "10819", userType: "18" },
+        { name: "이시온", password: "10820", userType: "19" },
+        { name: "이예준", password: "10821", userType: "20" },
+        { name: "이정우", password: "10822", userType: "21" },
+        { name: "이주호", password: "10823", userType: "22" },
+        { name: "이지원", password: "10824", userType: "23" },
+        { name: "이창근", password: "10825", userType: "24" },
+        { name: "임강현", password: "10826", userType: "25" },
+        { name: "전승훈", password: "10827", userType: "26" },
+        { name: "정민재", password: "10828", userType: "27" },
+        { name: "정시우", password: "10829", userType: "28" },
+        { name: "정태진", password: "10830", userType: "29" },
+        { name: "조성빈", password: "10831", userType: "30" },
+        { name: "최희찬", password: "10832", userType: "31" },
+        { name: "한경민", password: "10833", userType: "32" },
+        { name: "홍산들", password: "10835", userType: "33" },
+        { name: "이준우", password: "10836", userType: "34" }
+    ];
+
+    /* 📝 워드마스터 하이스트 Day 1 & Day 2 전체 실제 탑재 데이터 기입 */
+    const defaultWords = [
+        // Day 1
+        { day: 1, english: "be stricken with", korean: "시달리다. 고통받다" },
+        { day: 1, english: "allocation", korean: "할당, 배분" },
+        { day: 1, english: "dispute", korean: "논쟁, 논란하다" },
+        { day: 1, english: "hover", korean: "맴돌다. 주저하다" },
+        { day: 1, english: "encompass", korean: "포함하다. 둘러싸다" },
+        { day: 1, english: "decline", korean: "감소하다. 거절하다" },
+        { day: 1, english: "cumulative", korean: "누적된, 점증적인" },
+        { day: 1, english: "urban", korean: "도시의, 도회지의" },
+        { day: 1, english: "inclusive", korean: "포괄적인, 포함하는" },
+        { day: 1, english: "remark", korean: "언급, 논평하다" },
+        { day: 1, english: "acquisition", korean: "습득, 인수" },
+        { day: 1, english: "standstill", korean: "정지, 멈춤" },
+        { day: 1, english: "startle", korean: "깜짝 놀라게 하다" },
+        { day: 1, english: "viable", korean: "실행 가능한, 생존 가능한" },
+        { day: 1, english: "curb", korean: "억제하다. 제한하다" },
+        { day: 1, english: "detest", korean: "혐오하다. 몹시 싫어하다" },
+        { day: 1, english: "fierce", korean: "격렬한, 사나운" },
+        { day: 1, english: "adjacent", korean: "인접한, 가까운" },
+        { day: 1, english: "overload", korean: "과부하를 주다. 지나치게 싣다" },
+        { day: 1, english: "obsess", korean: "집착하다. 사로잡히다" },
+        { day: 1, english: "domain", korean: "영역, 분야" },
+        { day: 1, english: "spur", korean: "자극하다. 박차를 가하다" },
+        { day: 1, english: "spoil", korean: "망치다. 버릇없게 만들다" },
+        { day: 1, english: "alleviate", korean: "완화하다. 경감하다" },
+        { day: 1, english: "submerge", korean: "잠수하다. 가라앉히다" },
+        { day: 1, english: "hazard", korean: "위험, 해로운 요소" },
+        { day: 1, english: "lay claim to", korean: "~에 대한 권리를 주장하다" },
+        { day: 1, english: "friction", korean: "마찰, 불화" },
+        { day: 1, english: "endeavor", korean: "노력, 시도하다" },
+        { day: 1, english: "howl", korean: "울부짖다. 으르렁거리다" },
+
+        // Day 2
+        { day: 2, english: "adverse", korean: "부정적인, 불리한" },
+        { day: 2, english: "herbicide", korean: "제초제, 식물 살충제" },
+        { day: 2, english: "airborne", korean: "공중에 떠 있는, 공수의" },
+        { day: 2, english: "rotate", korean: "회전하다. 교대하다" },
+        { day: 2, english: "bewilder", korean: "당황하게 하다. 어리둥절하게 하다" },
+        { day: 2, english: "microbe", korean: "미생물, 세균" },
+        { day: 2, english: "scent", korean: "향기, 냄새 맡다" },
+        { day: 2, english: "apparatus", korean: "장치, 기구" },
+        { day: 2, english: "relocate", korean: "이전하다. 이주시키다" },
+        { day: 2, english: "arithmetic", korean: "산수, 계산" },
+        { day: 2, english: "apprehend", korean: "체포하다. 이해하다" },
+        { day: 2, english: "deterioration", korean: "악화, 저하" },
+        { day: 2, english: "graze", korean: "풀을 뜯다. 가볍게 스치다" },
+        { day: 2, english: "crawl", korean: "기어가다. 서행하다" },
+        { day: 2, english: "famine", korean: "기근, 극심한 부족" },
+        { day: 2, english: "enlightened", korean: "계몽된, 진보적인" },
+        { day: 2, english: "midst", korean: "한가운데, 중간" },
+        { day: 2, english: "offspring", korean: "자손, 결과물" },
+        { day: 2, english: "stale", korean: "신선하지 않은, 진부한" },
+        { day: 2, english: "with(in) regard to", korean: "~에 관하여, ~에 대해서" },
+        { day: 2, english: "dismiss", korean: "해고하다. 기각하다" },
+        { day: 2, english: "implement", korean: "실행하다. 도구" },
+        { day: 2, english: "adorn", korean: "장식하다. 꾸미다" },
+        { day: 2, english: "give way to", korean: "~에게 자리를 내주다. ~로 바뀌다" },
+        { day: 2, english: "compound", korean: "혼합물, 악화시키다" },
+        { day: 2, english: "metaphor", korean: "은유, 비유" },
+        { day: 2, english: "adhere", korean: "들러붙다. 충실하다" },
+        { day: 2, english: "elusive", korean: "찾기 힘든, 이해하기 어려운" },
+        { day: 2, english: "peasant", korean: "농부, 소작농" },
+        { day: 2, english: "vein", korean: "정맥, 기질" }
+    ];
+
+    let globalWordList = []; // 전체 단어 풀
+    let activeDayWords = []; // 현재 단원에 해당하는 단어들
+    let currentIndex = 0;   
+    let currentMode = "ko"; 
+    let currentUser = null;
+    let targetDay = 1;       // 사용자가 선택하여 풀고 있는 현재 단원 회차
+    let maxDayAvailable = 2; // 현재 연동된 최대 단원 수
+
+    /* DOM 요소 */
+    const loginSection = document.getElementById("loginSection");
+    const testSection = document.getElementById("testSection");
+    const monsterFace = document.getElementById("monsterFace");
+    const nameInputEl = document.getElementById("inputName");
+    const passwordInputEl = document.getElementById("inputPassword");
+    const eyeSockets = document.querySelectorAll('.eye-socket');
+    
+    const h1 = document.getElementById("h1");
+    const input = document.getElementById("input");
+    const detail = document.getElementById("detail");
+    const checkBox = document.getElementById("check_box");
+    const userInfoEl = document.getElementById("userInfo");
+    const daySelect = document.getElementById("daySelect");
+
+    /* ================= 1. 로그인 및 눈동자 인터랙션 스크립트 ================= */
+    document.querySelector('body').addEventListener('mousemove', eyeball);
+    function eyeball(event) {
+        if (passwordInputEl === document.activeElement) return;
+        const eyes = document.querySelectorAll('.eye');
+        eyes.forEach(function(eye) {
+            const rect = eye.getBoundingClientRect();
+            const x = rect.left + (eye.clientWidth / 2);
+            const y = rect.top + (eye.clientHeight / 2);
+            const radian = Math.atan2(event.clientX - x, event.clientY - y);
+            const rot = (radian * (180 / Math.PI) * -1) + 180;
+            eye.style.transform = `rotate(${rot}deg) translateY(-8px)`;
+        });
+    }
+
+    passwordInputEl.addEventListener('focus', () => { eyeSockets.forEach(socket => socket.classList.add('blind')); });
+    passwordInputEl.addEventListener('blur', () => { eyeSockets.forEach(socket => socket.classList.remove('blind')); });
+    passwordInputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginCheck(); });
+
+    function loginCheck() {
+        const currentName = nameInputEl.value.trim();
+        const currentPassword = passwordInputEl.value.trim();
+
+        if (!currentName || !currentPassword) {
+            alert("이름과 비밀번호를 모두 입력해주세요.");
+            return;
+        }
+
+        const matchedUser = users.find(u => u.name === currentName && u.password === currentPassword);
+
+        if (matchedUser) {
+            alert(`로그인 성공! 환영합니다, ${matchedUser.name}님.`);
+            currentUser = matchedUser;
+            
+            // 화면 전환
+            loginSection.style.display = "none";
+            monsterFace.style.display = "none";
+            testSection.style.display = "flex";
+
+            // 초기 기본 데이터셋 바인딩
+            globalWordList = [...defaultWords];
+            updateDaySelectOptions(); // 드롭다운 옵션 갱신
+            
+            userInfoEl.innerText = `👤 로그인: ${currentUser.name}님`;
+            
+            // 첫 번째 단원부터 바로 학습 시작 가능하도록 설정
+            targetDay = 1;
+            daySelect.value = targetDay;
+            
+            setupDayQuestion();
+        } else {
+            alert("로그인 실패: 이름 또는 비밀번호가 틀렸습니다.");
+        }
+    }
+
+    /* ================= 2. 단원 나누기 및 선택/동적 로직 ================= */
+    
+    // 전체 단어장의 단원(Day) 리스트를 스캔하여 드롭다운 메뉴를 자동 갱신하는 함수
+    function updateDaySelectOptions() {
+        const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
+        const sortedDays = Array.from(daySet).sort((a, b) => a - b);
+        
+        if(sortedDays.length > 0) {
+            maxDayAvailable = Math.max(...sortedDays);
+        }
+
+        daySelect.innerHTML = "";
+        sortedDays.forEach(day => {
+            const option = document.createElement("option");
+            option.value = day;
+            option.innerText = `Day ${day}`;
+            daySelect.appendChild(option);
+        });
+        
+        daySelect.value = targetDay;
+    }
+
+    // 선택 박스로 단원 변경 시 호출됨
+    function selectDay(dayValue) {
+        targetDay = parseInt(dayValue);
+        setupDayQuestion();
+    }
+
+    // 이전 단원 / 다음 단원 버튼 클릭 시 이동 제어
+    function moveDay(direction) {
+        let nextDay = targetDay + direction;
+        const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
+        
+        if (daySet.has(nextDay)) {
+            targetDay = nextDay;
+            daySelect.value = targetDay;
+            setupDayQuestion();
+        } else {
+            if(direction > 0) {
+                alert("마지막 단원입니다.");
+            } else {
+                alert("첫 번째 단원입니다.");
+            }
+        }
+    }
+
+    // 지정된 단원의 문제 데이터들을 가져와 셋업하는 함수
+    function setupDayQuestion() {
+        activeDayWords = globalWordList.filter(w => parseInt(w.day) === targetDay);
+
+        if (activeDayWords.length === 0) {
+            checkBox.innerText = `⚠️ Day ${targetDay} 단원에 등록된 단어가 없습니다.`;
+            h1.innerText = "데이터 없음";
+            input.disabled = true;
+            return;
+        }
+
+        input.disabled = false;
+        const modeTxt = currentMode === "ko" ? "한글 뜻 보고 영어 맞추기" : "영단어 보고 한글 뜻 맞추기";
+        checkBox.style.backgroundColor = "black";
+        checkBox.innerText = `현재 모드: [Day ${targetDay} 단원 학습 중] ${modeTxt} (총 ${activeDayWords.length}단어)`;
+        
+        currentIndex = 0;
+        detail.innerText = "문제가 준비되었습니다. 답을 입력하세요!";
+        detail.style.backgroundColor = "gray";
+        nextQuestion();
+    }
+
+    function nextQuestion() {
+        if (activeDayWords.length === 0) return;
+        
+        // 해당 단원의 문제를 모두 다 맞춘 경우
+        if (currentIndex >= activeDayWords.length) { 
+            alert(`👏👏 축하합니다! Day ${targetDay} 단원을 모두 완료하셨습니다!`);
+            
+            // 자동으로 다음 단원이 있다면 이동 제어
+            let nextDay = targetDay + 1;
+            const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
+            if(daySet.has(nextDay)) {
+                if(confirm("다음 단원(Day " + nextDay + ")으로 이동하여 시험을 치르시겠습니까?")) {
+                    targetDay = nextDay;
+                    daySelect.value = targetDay;
+                    setupDayQuestion();
+                }
+            } else {
+                checkBox.innerText = `🎉 축하합니다! 마지막 단원까지 완벽히 마스터하셨습니다.`;
+                h1.innerText = "CLEAR!";
+                input.disabled = true;
+            }
+            return; 
+        }
+
+        const currentWord = activeDayWords[currentIndex];
+
+        // 💡 문제 출제 정보 가독성 보강 (몇 번째 단어인지 표시)
+        if (currentMode === "ko") {
+            h1.innerText = currentWord.korean;
+            input.placeholder = `(${currentIndex + 1}/${activeDayWords.length}) 영단어를 입력하세요..`;
+        } else {
+            h1.innerText = currentWord.english;
+            input.placeholder = `(${currentIndex + 1}/${activeDayWords.length}) 뜻(한글)을 입력하세요..`;
+        }
+        input.value = '';
+        input.focus();
+    }
+
+    function checkWord() {
+        if(activeDayWords.length === 0 || input.disabled) return;
+
+        const userAnswer = input.value.trim();
+        const currentWord = activeDayWords[currentIndex];
+        let isCorrect = false;
+
+        if (currentMode === "ko") {
+            if (userAnswer.toLowerCase() === currentWord.english.toLowerCase()) isCorrect = true;
+        } else {
+            // 사용자가 기입한 정답이 단어장에 기재된 뜻을 포함하거나 일치하는지 판별
+            if (userAnswer === currentWord.korean || currentWord.korean.includes(userAnswer) && userAnswer.length > 0) isCorrect = true;
+        }
+
+        if (isCorrect) {
+            detail.innerText = `⭕ Correct! -> ${currentWord.english} : ${currentWord.korean}`;
+            detail.style.backgroundColor = "#2ecc71";
+            currentIndex++;
+            setTimeout(nextQuestion, 1000);
+        } else {
+            // 오답 시 정답을 바로 보여주지 않고 다시 기회를 주되 스타일 변경
+            detail.innerText = "❌ Incorrect! 다시 한번 신중하게 시도해보세요.";
+            detail.style.backgroundColor = "#e74c3c";
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function changeMode(mode) {
+        currentMode = mode;
+        setupDayQuestion();
+    }
+
+    /* ================= 3. 엑셀(CSV) 파일 업로드 처리기 ================= */
+    function handleFileUpload() {
+        const fileInput = document.getElementById("csvFile");
+        const file = fileInput.files[0];
+        
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split("\n");
+            const parsedWords = [];
+
+            // CSV Parsing (첫 줄은 header 가정: day, english, korean)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const columns = line.split(","); // 쉼표 기준 분리
+                if (columns.length >= 3) {
+                    parsedWords.push({
+                        day: parseInt(columns[0].trim()),
+                        english: columns[1].trim(),
+                        korean: columns[2].trim()
+                    });
+                }
+            }
+
+            if(parsedWords.length > 0) {
+                globalWordList = parsedWords;
+                alert(`엑셀(CSV) 로드 완료! 총 ${globalWordList.length}개의 단어가 연동되었습니다.`);
+                
+                updateDaySelectOptions(); // 새로 바뀐 단원 리스트 드롭다운 반영
+                targetDay = parseInt(globalWordList[0].day); // 최하위 단원으로 타겟 재설정
+                daySelect.value = targetDay;
+                
+                setupDayQuestion();
+            } else {
+                alert("파일 파싱 실패: 형식이 올바르지 않습니다. (형식: 단원,영어,한글)");
+            }
+        };
+        reader.readAsText(file, "EUC-KR"); // 한글 깨짐 방지용 인코딩
+    }
+
+    function logout() {
+        currentUser = null;
+        testSection.style.display = "none";
+        loginSection.style.display = "flex";
+        monsterFace.style.display = "flex";
+        nameInputEl.value = '';
+        passwordInputEl.value = '';
+        alert("로그아웃 되었습니다.");
+    }
+
+    // 엔터키 입력 이벤트
+    input.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            checkWord();
+        }
+    });
+</script>
+</body>
+</html>
