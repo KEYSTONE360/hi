@@ -8,7 +8,7 @@
         /* 공통 스타일 */
         body {
             justify-content: center; align-items: center; display: flex; height: 100vh; margin: 0;
-            background-color: #f5f5f5; font-family: Arial, sans-serif; overflow: hidden;
+            background-color: #f5f5f5; font-family: Arial, sans-serif; overflow: hidden; flex-direction: column;
         }
         ::-webkit-scrollbar { display: none; }
 
@@ -66,7 +66,7 @@
             color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;
         }
         .test-container .detail {
-            width: 800px; height: 120px; background-color: gray; border-radius: 10px; position: absolute; bottom: 5%;
+            width: 800px; height: 120px; background-color: gray; border-radius: 10px; position: absolute; bottom: 12%;
             font-size: 35px; color: white; display: flex; align-items: center; justify-content: center; text-align: center;
         }
         .test-container .user-info { position: absolute; top: 11%; font-weight: bold; color: #333; font-size: 18px; }
@@ -74,6 +74,34 @@
         /* 엑셀/CSV 업로드 영역 */
         .upload-box { position: absolute; top: 8%; right: 2%; background: #fff; padding: 10px; border-radius: 8px; border: 1px dashed #777; font-size: 12px; z-index: 30;}
         .upload-box input { margin-top: 5px; }
+
+        /* 기록 확인 버튼 */
+        .history-trigger-btn { position: absolute; bottom: 4%; background: #2c3e50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+        .history-trigger-btn:hover { background: #34495e; }
+
+        /* ================= 최종 성적표 리포트 스타일 추가 ================= */
+        .report-card {
+            background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 700px; max-height: 60vh; overflow-y: auto; text-align: center; z-index: 40; margin-top: 50px;
+        }
+        .report-card h2 { color: #333; margin-top: 0; }
+        .score { font-size: 24px; font-weight: bold; color: #2ecc71; margin-bottom: 20px; }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 16px; }
+        .result-table th, .result-table td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        .result-table th { background-color: #f8f9fa; font-weight: bold; }
+        .correct { color: #2ecc71; font-weight: bold; }
+        .incorrect { color: #e74c3c; font-weight: bold; }
+        .report-btns { margin-top: 25px; display: flex; justify-content: center; gap: 15px; }
+        .report-btns button { padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .retry-btn { background-color: #3498db; color: white; border: none; }
+        .retry-btn:hover { background-color: #2980b9; }
+        .next-btn { background-color: #2ecc71; color: white; border: none; }
+        .next-btn:hover { background-color: #27ae60; }
+
+        /* 기록 팝업 모달 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center;}
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 750px; max-height: 70vh; overflow-y: auto; position: relative;}
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; border: none; background: none;}
     </style>
 </head>
 <body>
@@ -96,7 +124,7 @@
 
 
     <div id="testSection" class="test-container">
-        <div class="upload-box">
+        <div class="upload-box" id="uploadBox">
             <strong>📁 단어장 CSV 업로드</strong><br>
             <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload()">
         </div>
@@ -104,7 +132,7 @@
         <div class="check_box" id="check_box">모드 설정 중...</div>
         <div class="user-info" id="userInfo">로그인 정보 없음</div>
 
-        <div class="choice">
+        <div class="choice" id="choiceBar">
             <button onclick="moveDay(-1)">◀ 이전 Day</button>
             <select id="daySelect" onchange="selectDay(this.value)">
                 <option value="1">Day 1</option>
@@ -117,16 +145,43 @@
             <button class="login" onclick="logout()">LOGOUT</button>
         </div>
 
-        <div class="box_2" id="box_2">
-            <h1 class="H1" id="h1">문제 로딩 중...</h1>
+        <div id="quizContents" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div class="box_2" id="box_2">
+                <h1 class="H1" id="h1">문제 로딩 중...</h1>
+            </div>
+
+            <div class="box">
+                <input placeholder=" Answer.." class="input" id="input" autocomplete="off">
+                <button onclick="checkWord()" class="button" id="button">Answer</button>
+            </div>
         </div>
 
-        <div class="box">
-            <input placeholder=" Answer.." class="input" id="input" autocomplete="off">
-            <button onclick="checkWord()" class="button" id="button">Answer</button>
-        </div>
+        <div id="reportContainer" style="display: none;"></div>
 
         <div class="detail" id="detail">결과가 여기에 표시됩니다.</div>
+
+        <button class="history-trigger-btn" onclick="openHistoryModal()">📊 전체 학습 기록 확인하기</button>
+    </div>
+
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+            <h3>📋 누적 학생 학습 기록 (시스템 저장고)</h3>
+            <p style="font-size:12px; color:gray;">* 본 기록은 브라우저(localStorage)에 안전하게 누적 보관됩니다.</p>
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>일시</th>
+                        <th>이름(학번)</th>
+                        <th>테스트 단원</th>
+                        <th>진행 모드</th>
+                        <th>최종 점수</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    </tbody>
+            </table>
+        </div>
     </div>
 
 <script>
@@ -168,7 +223,7 @@
         { name: "이준우", password: "10836", userType: "34" }
     ];
 
-    /* 📝 워드마스터 하이스트 Day 1 & Day 2 전체 실제 탑재 데이터 기입 */
+    /* 📝 워드마스터 하이스트 Day 1 & Day 2 전체 데이터 기입 */
     const defaultWords = [
         // Day 1
         { day: 1, english: "be stricken with", korean: "시달리다. 고통받다" },
@@ -242,6 +297,7 @@
     let currentUser = null;
     let targetDay = 1;       // 사용자가 선택하여 풀고 있는 현재 단원 회차
     let maxDayAvailable = 2; // 현재 연동된 최대 단원 수
+    let results = [];        // 실시간 정오답 상태를 보관할 기록 저장소
 
     /* DOM 요소 */
     const loginSection = document.getElementById("loginSection");
@@ -257,6 +313,11 @@
     const checkBox = document.getElementById("check_box");
     const userInfoEl = document.getElementById("userInfo");
     const daySelect = document.getElementById("daySelect");
+
+    const quizContents = document.getElementById("quizContents");
+    const reportContainer = document.getElementById("reportContainer");
+    const choiceBar = document.getElementById("choiceBar");
+    const uploadBox = document.getElementById("uploadBox");
 
     /* ================= 1. 로그인 및 눈동자 인터랙션 스크립트 ================= */
     document.querySelector('body').addEventListener('mousemove', eyeball);
@@ -303,7 +364,6 @@
             
             userInfoEl.innerText = `👤 로그인: ${currentUser.name}님`;
             
-            // 첫 번째 단원부터 바로 학습 시작 가능하도록 설정
             targetDay = 1;
             daySelect.value = targetDay;
             
@@ -315,7 +375,6 @@
 
     /* ================= 2. 단원 나누기 및 선택/동적 로직 ================= */
     
-    // 전체 단어장의 단원(Day) 리스트를 스캔하여 드롭다운 메뉴를 자동 갱신하는 함수
     function updateDaySelectOptions() {
         const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
         const sortedDays = Array.from(daySet).sort((a, b) => a - b);
@@ -335,13 +394,11 @@
         daySelect.value = targetDay;
     }
 
-    // 선택 박스로 단원 변경 시 호출됨
     function selectDay(dayValue) {
         targetDay = parseInt(dayValue);
         setupDayQuestion();
     }
 
-    // 이전 단원 / 다음 단원 버튼 클릭 시 이동 제어
     function moveDay(direction) {
         let nextDay = targetDay + direction;
         const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
@@ -359,7 +416,15 @@
         }
     }
 
-    // 지정된 단원의 문제 데이터들을 가져와 셋업하는 함수
+    /* 🛡️ 추가: 오늘 이미 해당 단원을 제출했는지 체크하는 헬퍼 함수 */
+    function checkTodayAttempt(username, day, mode) {
+        const history = JSON.parse(localStorage.getItem("wordMasterHistory") || "[]");
+        const todayStr = new Date().toLocaleDateString(); // "2026. 5. 28." 형식
+        
+        // 유저이름, 푸는 Day, 언어 모드, 오늘 날짜가 완벽히 일치하는 내역 탐색
+        return history.find(h => h.username === username && h.day === day && h.mode === mode && h.dateOnly === todayStr);
+    }
+
     function setupDayQuestion() {
         activeDayWords = globalWordList.filter(w => parseInt(w.day) === targetDay);
 
@@ -370,12 +435,35 @@
             return;
         }
 
+        // 🛡️ [하루 1회 제한 시스템 작동] 로그인 상태일 때 오늘 기록 조회
+        if(currentUser) {
+            const alreadyRecord = checkTodayAttempt(currentUser.name, targetDay, currentMode);
+            if(alreadyRecord) {
+                alert(`⚠️ [일일 제한] ${currentUser.name}님은 오늘 이미 'Day ${targetDay} (${currentMode === 'ko' ? 'Korean' : 'English'})' 테스트를 완료하셨습니다!\n시험은 하루에 한 번만 응시 가능합니다. 기존 기록 성적표를 표기합니다.`);
+                
+                // 가짜결과 복원해서 성적표만 띄우기
+                results = alreadyRecord.rawResults || [];
+                showReportCard(true); // true 인자를 넘겨 재도전 버튼을 숨김 처리
+                return;
+            }
+        }
+
+        // 새 테스트 데이터 진입을 위한 전체 상태 초기화
+        currentIndex = 0;
+        results = [];
+
+        // UI 토글 초기화 (성적표 닫고 퀴즈 오픈)
+        quizContents.style.display = "flex";
+        choiceBar.style.display = "flex";
+        uploadBox.style.display = "block";
+        detail.style.display = "flex";
+        reportContainer.style.display = "none";
+
         input.disabled = false;
         const modeTxt = currentMode === "ko" ? "한글 뜻 보고 영어 맞추기" : "영단어 보고 한글 뜻 맞추기";
         checkBox.style.backgroundColor = "black";
         checkBox.innerText = `현재 모드: [Day ${targetDay} 단원 학습 중] ${modeTxt} (총 ${activeDayWords.length}단어)`;
         
-        currentIndex = 0;
         detail.innerText = "문제가 준비되었습니다. 답을 입력하세요!";
         detail.style.backgroundColor = "gray";
         nextQuestion();
@@ -384,30 +472,16 @@
     function nextQuestion() {
         if (activeDayWords.length === 0) return;
         
-        // 해당 단원의 문제를 모두 다 맞춘 경우
+        // 해당 단원의 문제를 모두 다 체크한 경우 성적표 리포트 출력
         if (currentIndex >= activeDayWords.length) { 
-            alert(`👏👏 축하합니다! Day ${targetDay} 단원을 모두 완료하셨습니다!`);
-            
-            // 자동으로 다음 단원이 있다면 이동 제어
-            let nextDay = targetDay + 1;
-            const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
-            if(daySet.has(nextDay)) {
-                if(confirm("다음 단원(Day " + nextDay + ")으로 이동하여 시험을 치르시겠습니까?")) {
-                    targetDay = nextDay;
-                    daySelect.value = targetDay;
-                    setupDayQuestion();
-                }
-            } else {
-                checkBox.innerText = `🎉 축하합니다! 마지막 단원까지 완벽히 마스터하셨습니다.`;
-                h1.innerText = "CLEAR!";
-                input.disabled = true;
-            }
+            // 💾 모든 문항 종료 시점에 로컬스토리지에 데이터 영구 저장
+            saveScoreToStorage();
+            showReportCard(false);
             return; 
         }
 
         const currentWord = activeDayWords[currentIndex];
 
-        // 💡 문제 출제 정보 가독성 보강 (몇 번째 단어인지 표시)
         if (currentMode === "ko") {
             h1.innerText = currentWord.korean;
             input.placeholder = `(${currentIndex + 1}/${activeDayWords.length}) 영단어를 입력하세요..`;
@@ -423,28 +497,156 @@
         if(activeDayWords.length === 0 || input.disabled) return;
 
         const userAnswer = input.value.trim();
+        if (userAnswer === "") {
+            alert("답안을 입력해주세요!");
+            return;
+        }
+
         const currentWord = activeDayWords[currentIndex];
         let isCorrect = false;
+        let correctAnswer = currentMode === "ko" ? currentWord.english : currentWord.korean;
 
         if (currentMode === "ko") {
             if (userAnswer.toLowerCase() === currentWord.english.toLowerCase()) isCorrect = true;
         } else {
-            // 사용자가 기입한 정답이 단어장에 기재된 뜻을 포함하거나 일치하는지 판별
-            if (userAnswer === currentWord.korean || currentWord.korean.includes(userAnswer) && userAnswer.length > 0) isCorrect = true;
+            if (userAnswer === currentWord.korean || currentWord.korean.includes(userAnswer)) isCorrect = true;
         }
 
+        // 결과 배열에 상세 이력 푸시
+        results.push({
+            question: currentMode === "ko" ? currentWord.korean : currentWord.english,
+            userAnswer: userAnswer,
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect
+        });
+
+        // 채점 결과 실시간 피드백 노출 (틀려도 정답 가이드 제공 후 1.2초 뒤 다음 문제 자동 전환)
         if (isCorrect) {
             detail.innerText = `⭕ Correct! -> ${currentWord.english} : ${currentWord.korean}`;
             detail.style.backgroundColor = "#2ecc71";
-            currentIndex++;
-            setTimeout(nextQuestion, 1000);
         } else {
-            // 오답 시 정답을 바로 보여주지 않고 다시 기회를 주되 스타일 변경
-            detail.innerText = "❌ Incorrect! 다시 한번 신중하게 시도해보세요.";
+            detail.innerText = `❌ Incorrect! (정답: ${correctAnswer})`;
             detail.style.backgroundColor = "#e74c3c";
-            input.value = '';
-            input.focus();
         }
+
+        currentIndex++;
+        input.disabled = true; // 딜레이 시간 동안 중복 입력 방지
+
+        setTimeout(() => {
+            input.disabled = false;
+            nextQuestion();
+        }, 1200);
+    }
+
+    /* 💾 추가: 로컬 스토리지에 학생 점수와 일시 기록하기 */
+    function saveScoreToStorage() {
+        if(!currentUser) return;
+
+        const correctCount = results.filter(r => r.isCorrect).length;
+        const totalCount = activeDayWords.length;
+        const score = Math.round((correctCount / totalCount) * 100);
+        
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
+        const dateOnly = now.toLocaleDateString();
+
+        const historyItem = {
+            username: currentUser.name,
+            password: currentUser.password,
+            day: targetDay,
+            mode: currentMode,
+            scoreText: `${correctCount} / ${totalCount}개 (${score}점)`,
+            timestamp: timestamp,
+            dateOnly: dateOnly,
+            rawResults: results // 오늘 다시 조회할 때 결과창 서포트용
+        };
+
+        // 기존 내역 불러와서 추가저장
+        const existingHistory = JSON.parse(localStorage.getItem("wordMasterHistory") || "[]");
+        existingHistory.push(historyItem);
+        localStorage.setItem("wordMasterHistory", JSON.stringify(existingHistory));
+    }
+
+    /* ================= 3. 최종 결과 리포트(성적표) 빌더 함수 ================= */
+    function showReportCard(isReadOnly = false) {
+        // 인터페이스 정리
+        quizContents.style.display = "none";
+        choiceBar.style.display = "none";
+        uploadBox.style.display = "none";
+        detail.style.display = "none";
+
+        const correctCount = results.filter(r => r.isCorrect).length;
+        const totalCount = activeDayWords.length;
+        const score = Math.round((correctCount / totalCount) * 100);
+
+        checkBox.style.backgroundColor = "#2c3e50";
+        checkBox.innerText = isReadOnly 
+            ? `🏁 [조회 모드] 오늘 이미 제출된 Day ${targetDay} 결과 리포트입니다.`
+            : `🏁 Day ${targetDay} 테스트 완료! 결과가 시스템에 저장되었습니다.`;
+
+        let nextDay = targetDay + 1;
+        const daySet = new Set(globalWordList.map(w => parseInt(w.day)));
+        const hasNextDay = daySet.has(nextDay);
+
+        let reportHtml = `
+            <div class="report-card">
+                <h2>📋 단원 평가 성적표 (Day ${targetDay})</h2>
+                <div class="score">정답률: ${correctCount} / ${totalCount}개 (${score}점)</div>
+                <table class="result-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">문제</th>
+                            <th style="width: 25%;">제출한 답</th>
+                            <th style="width: 25%;">실제 정답</th>
+                            <th style="width: 15%;">판정</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        results.forEach(res => {
+            reportHtml += `
+                <tr>
+                    <td><strong>${res.question}</strong></td>
+                    <td>${res.userAnswer}</td>
+                    <td>${res.correctAnswer}</td>
+                    <td class="${res.isCorrect ? 'correct' : 'incorrect'}">${res.isCorrect ? '⭕ 정답' : '❌ 오답'}</td>
+                </tr>
+            `;
+        });
+
+        reportHtml += `
+                    </tbody>
+                </table>
+                <div class="report-btns">
+        `;
+
+        // 🛡️ 오늘 이미 풀었다면 (isReadOnly) '다시 도전하기' 버튼은 렌더링하지 않음
+        if (!isReadOnly) {
+            reportHtml += `<button class="retry-btn" onclick="setupDayQuestion()">🔄 다시 도전하기</button>`;
+        } else {
+            reportHtml += `<span style="color:#e74c3c; font-size:14px; align-self:center; font-weight:bold;">⚠️ 오늘 시험 완료 (내일 재응시 가능)</span>`;
+        }
+
+        // 다음 Day 연동 데이터가 존재하는 경우 바로 다음 단원 이동 버튼 활성화
+        if (hasNextDay) {
+            reportHtml += `<button class="next-btn" onclick="goToNextDay(${nextDay})">⏩ 다음 Day ${nextDay} 풀기</button>`;
+        }
+
+        reportHtml += `
+                    <button class="login" style="background-color: #e74c3c; color:white; border:none;" onclick="logout()">LOGOUT</button>
+                </div>
+            </div>
+        `;
+
+        reportContainer.innerHTML = reportHtml;
+        reportContainer.style.display = "block";
+    }
+
+    function goToNextDay(nextDayNumber) {
+        targetDay = nextDayNumber;
+        daySelect.value = targetDay;
+        setupDayQuestion();
     }
 
     function changeMode(mode) {
@@ -452,7 +654,7 @@
         setupDayQuestion();
     }
 
-    /* ================= 3. 엑셀(CSV) 파일 업로드 처리기 ================= */
+    /* ================= 4. 엑셀(CSV) 파일 업로드 처리기 ================= */
     function handleFileUpload() {
         const fileInput = document.getElementById("csvFile");
         const file = fileInput.files[0];
@@ -465,12 +667,11 @@
             const lines = text.split("\n");
             const parsedWords = [];
 
-            // CSV Parsing (첫 줄은 header 가정: day, english, korean)
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
                 
-                const columns = line.split(","); // 쉼표 기준 분리
+                const columns = line.split(","); 
                 if (columns.length >= 3) {
                     parsedWords.push({
                         day: parseInt(columns[0].trim()),
@@ -484,8 +685,8 @@
                 globalWordList = parsedWords;
                 alert(`엑셀(CSV) 로드 완료! 총 ${globalWordList.length}개의 단어가 연동되었습니다.`);
                 
-                updateDaySelectOptions(); // 새로 바뀐 단원 리스트 드롭다운 반영
-                targetDay = parseInt(globalWordList[0].day); // 최하위 단원으로 타겟 재설정
+                updateDaySelectOptions(); 
+                targetDay = parseInt(globalWordList[0].day); 
                 daySelect.value = targetDay;
                 
                 setupDayQuestion();
@@ -493,7 +694,7 @@
                 alert("파일 파싱 실패: 형식이 올바르지 않습니다. (형식: 단원,영어,한글)");
             }
         };
-        reader.readAsText(file, "EUC-KR"); // 한글 깨짐 방지용 인코딩
+        reader.readAsText(file, "EUC-KR"); 
     }
 
     function logout() {
@@ -504,6 +705,35 @@
         nameInputEl.value = '';
         passwordInputEl.value = '';
         alert("로그아웃 되었습니다.");
+    }
+
+    /* ================= 5. 관리자/교사 누적 기록 뷰어 모달 제어 ================= */
+    function openHistoryModal() {
+        const history = JSON.parse(localStorage.getItem("wordMasterHistory") || "[]");
+        const tbody = document.getElementById("historyTableBody");
+        tbody.innerHTML = "";
+
+        if(history.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="color:gray;">아직 제출된 기록이 존재하지 않습니다.</td></tr>`;
+        } else {
+            // 가장 최신 기록이 위로 올라오도록 역순정렬 배치
+            history.slice().reverse().forEach(h => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${h.timestamp}</td>
+                    <td><strong>${h.username}</strong> (${h.password})</td>
+                    <td>Day ${h.day}</td>
+                    <td><span style="color:purple; font-weight:bold;">${h.mode === 'ko' ? 'Korean' : 'English'}</span></td>
+                    <td style="color:#27ae60; font-weight:bold;">${h.scoreText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        document.getElementById("historyModal").style.display = "flex";
+    }
+
+    function closeHistoryModal() {
+        document.getElementById("historyModal").style.display = "none";
     }
 
     // 엔터키 입력 이벤트
